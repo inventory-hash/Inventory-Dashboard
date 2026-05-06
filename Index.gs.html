@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Call Center Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #080c14;
+    --bg2: #0d1320;
+    --bg3: #111927;
+    --card: #0f1a28;
+    --border: rgba(56, 139, 255, 0.12);
+    --border2: rgba(56, 139, 255, 0.22);
+    --accent: #3b82f6;
+    --accent2: #06d6a0;
+    --accent3: #f59e0b;
+    --accent4: #f43f5e;
+    --text: #e8f0fe;
+    --text2: #8ba3c7;
+    --text3: #4a6080;
+    --glow: rgba(59, 130, 246, 0.15);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page { position: relative; z-index: 1; padding: 0 0 60px; }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 22px 40px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(8,12,20,0.85);
+    backdrop-filter: blur(12px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    border: 1.5px solid var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .logo-icon::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--glow);
+  }
+
+  .logo-icon svg { width: 18px; height: 18px; }
+
+  .logo-text {
+    font-family: 'Syne', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--text);
+  }
+
+  .logo-text span { color: var(--accent); }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--accent2);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .live-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent2);
+    animation: pulse 1.8s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 rgba(6,214,160,0.5); }
+    50% { opacity: 0.8; transform: scale(1.2); box-shadow: 0 0 0 6px rgba(6,214,160,0); }
+  }
+
+  .refresh-btn {
+    display: flex; align-items: center; gap: 7px;
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 7px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.2s;
+  }
+
+  .refresh-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--glow); }
+  .refresh-btn.loading svg { animation: spin 0.7s linear infinite; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .last-updated { font-size: 11px; color: var(--text3); letter-spacing: 0.04em; }
+
+  /* ── MAIN CONTENT ── */
+  main { padding: 36px 40px; }
+
+  /* ── DATE FILTER ── */
+  .filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+  }
+
+  .filter-label { font-size: 11px; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; margin-right: 4px; }
+
+  .filter-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    padding: 7px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.04em;
+  }
+
+  .filter-btn:hover { border-color: var(--border2); color: var(--text); }
+  .filter-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(59,130,246,0.08); }
+
+  /* ── KPI GRID ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .kpi-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px 24px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.25s, transform 0.2s;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .kpi-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+
+  .kpi-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--kpi-accent, var(--accent)), transparent);
+    opacity: 0.7;
+  }
+
+  .kpi-card:nth-child(1) { --kpi-accent: #3b82f6; animation-delay: 0.05s; }
+  .kpi-card:nth-child(2) { --kpi-accent: #06d6a0; animation-delay: 0.1s; }
+  .kpi-card:nth-child(3) { --kpi-accent: #f59e0b; animation-delay: 0.15s; }
+  .kpi-card:nth-child(4) { --kpi-accent: #f43f5e; animation-delay: 0.2s; }
+  .kpi-card:nth-child(5) { --kpi-accent: #a78bfa; animation-delay: 0.25s; }
+  .kpi-card:nth-child(6) { --kpi-accent: #38bdf8; animation-delay: 0.3s; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .kpi-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 16px;
+    background: rgba(59,130,246,0.1);
+    font-size: 15px;
+  }
+
+  .kpi-label {
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .kpi-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+  }
+
+  .kpi-sub {
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: 0.04em;
+  }
+
+  .kpi-sub.up { color: #06d6a0; }
+  .kpi-sub.down { color: #f43f5e; }
+
+  /* ── CHARTS ROW ── */
+  .charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+
+  .charts-row-3 {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+
+  .chart-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+    animation: fadeUp 0.5s ease both;
+    animation-delay: 0.35s;
+  }
+
+  .chart-card:nth-child(2) { animation-delay: 0.45s; }
+  .chart-card:nth-child(3) { animation-delay: 0.55s; }
+
+  .chart-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .chart-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.02em;
+  }
+
+  .chart-badge {
+    font-size: 10px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border2);
+    color: var(--text3);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text2);
+    letter-spacing: 0.04em;
+  }
+
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  /* ── AGENT TABLE ── */
+  .table-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+    animation: fadeUp 0.5s ease both;
+    animation-delay: 0.5s;
+    margin-bottom: 20px;
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  th {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    text-align: left;
+    padding: 0 16px 14px 0;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 13px 16px 13px 0;
+    border-bottom: 1px solid rgba(56,139,255,0.06);
+    color: var(--text2);
+    vertical-align: middle;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(59,130,246,0.03); color: var(--text); }
+
+  .agent-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 3px 9px;
+    border-radius: 4px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin: 2px;
+  }
+
+  .tag-in { background: rgba(59,130,246,0.12); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); }
+  .tag-out { background: rgba(6,214,160,0.1); color: #34d399; border: 1px solid rgba(6,214,160,0.2); }
+  .tag-man { background: rgba(245,158,11,0.1); color: #fbbf24; border: 1px solid rgba(245,158,11,0.2); }
+
+  .progress-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .bar-track {
+    flex: 1;
+    height: 5px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 99px;
+    overflow: hidden;
+    min-width: 60px;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.8s cubic-bezier(0.16,1,0.3,1);
+  }
+
+  .bar-val { font-size: 12px; color: var(--text2); min-width: 36px; text-align: right; }
+
+  /* ── LOADING / ERROR ── */
+  .status-overlay {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 320px;
+    gap: 16px;
+    color: var(--text3);
+    font-size: 13px;
+    letter-spacing: 0.04em;
+  }
+
+  .spinner {
+    width: 36px; height: 36px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  @media (max-width: 900px) {
+    header { padding: 16px 20px; }
+    main { padding: 24px 20px; }
+    .charts-row, .charts-row-3 { grid-template-columns: 1fr; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .logo-text { display: none; }
+    .last-updated { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="9" cy="9" r="3.5" stroke="#3b82f6" stroke-width="1.5"/>
+          <path d="M9 2v2M9 14v2M2 9h2M14 9h2" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M4.22 4.22l1.42 1.42M12.36 12.36l1.42 1.42M4.22 13.78l1.42-1.42M12.36 5.64l1.42-1.42" stroke="#3b82f6" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
+        </svg>
+      </div>
+      <div class="logo-text">CALL<span>OPS</span> &mdash; Live Dashboard</div>
+    </div>
+    <div class="header-right">
+      <div class="live-badge"><div class="live-dot"></div> Live</div>
+      <span class="last-updated" id="lastUpdated">—</span>
+      <button class="refresh-btn" id="refreshBtn" onclick="loadData()">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M10.5 6A4.5 4.5 0 1 1 6 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M6 1.5 8 3.5 6 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Refresh
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main>
+    <div class="filter-bar" id="filterBar">
+      <span class="filter-label">Filter</span>
+      <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+      <button class="filter-btn" onclick="setFilter('Inbound',this)">Inbound</button>
+      <button class="filter-btn" onclick="setFilter('Outbound',this)">Outbound</button>
+      <button class="filter-btn" onclick="setFilter('Manual',this)">Manual</button>
+    </div>
+
+    <div id="app">
+      <div class="status-overlay"><div class="spinner"></div><span>Fetching live data…</span></div>
+    </div>
+  </main>
+</div>
+
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbyAsCmtic9kgJMvdVrWCYRpELvTqwdnUR_OIUI5uVw1Vj8ycZl6LCz5Xp49kb2MhcNV/exec';
+
+let allData = [];
+let currentFilter = 'all';
+let charts = {};
+
+/* ── DATA LOAD ── */
+async function loadData() {
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('loading');
+  try {
+    const res = await fetch(API_URL);
+    const raw = await res.json();
+    allData = normalise(raw);
+    document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+    render();
+  } catch(e) {
+    document.getElementById('app').innerHTML = `
+      <div class="status-overlay">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#f43f5e" stroke-width="1.5"/><path d="M12 7v6M12 16.5v.5" stroke="#f43f5e" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span style="color:#f43f5e">Failed to load data</span>
+        <span style="font-size:11px;color:var(--text3)">${e.message}</span>
+        <button class="refresh-btn" onclick="loadData()">Retry</button>
+      </div>`;
+  } finally {
+    btn.classList.remove('loading');
+  }
+}
+
+/* ── NORMALISE: handles both array-of-objects and {values:[[...]]} formats ── */
+function normalise(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (raw.values) {
+    const [headers, ...rows] = raw.values;
+    return rows.map(r => {
+      const obj = {};
+      headers.forEach((h, i) => obj[h] = r[i] ?? '');
+      return obj;
+    });
+  }
+  return [];
+}
+
+/* ── FILTER ── */
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  if (el) el.classList.add('active');
+  render();
+}
+
+function filtered() {
+  if (currentFilter === 'all') return allData;
+  return allData.filter(r => String(r['Interaction Type'] || r.type || '').trim() === currentFilter);
+}
+
+/* ── COMPUTE METRICS ── */
+function metrics(data) {
+  const n = data.length;
+  const connected = data.filter(r => +r['Customer Talk Duration'] > 0 || +r.talkDur > 0);
+  const totalTalk = data.reduce((s,r) => s + (+r['Customer Talk Duration'] || +r.talkDur || 0), 0);
+  const avgTalk = connected.length ? Math.round(totalTalk / connected.length) : 0;
+  const realAgents = data.filter(r => {
+    const a = r['Agent Name'] || r.agent || '';
+    return a && a !== 'Inbound No Agent';
+  });
+  const agents = new Set(realAgents.map(r => r['Agent Name'] || r.agent)).size;
+  const noAgent = data.filter(r => {
+    const a = r['Agent Name'] || r.agent || '';
+    return a === 'Inbound No Agent';
+  }).length;
+  const connRate = n ? Math.round(connected.length / n * 100) : 0;
+  return { n, connected: connected.length, totalTalk, avgTalk, agents, noAgent, connRate };
+}
+
+/* ── RENDER ── */
+function render() {
+  const data = filtered();
+  if (!data.length) {
+    document.getElementById('app').innerHTML = '<div class="status-overlay"><span>No data found for this filter.</span></div>';
+    return;
+  }
+
+  // destroy old charts
+  Object.values(charts).forEach(c => { try { c.destroy(); } catch(e){} });
+  charts = {};
+
+  const m = metrics(data);
+
+  document.getElementById('app').innerHTML = `
+    <!-- KPIs -->
+    <div class="kpi-grid" id="kpiGrid"></div>
+
+    <!-- Charts row 1 -->
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title">Hourly call volume</div>
+          <span class="chart-badge">Timeline</span>
+        </div>
+        <div style="position:relative;height:220px"><canvas id="hourChart" role="img" aria-label="Hourly call volume bar chart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title">Interaction types</div>
+          <span class="chart-badge">Distribution</span>
+        </div>
+        <div class="legend" id="typeLegend"></div>
+        <div style="position:relative;height:190px"><canvas id="typeChart" role="img" aria-label="Interaction type doughnut chart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Charts row 2 -->
+    <div class="charts-row-3">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title">Agent talk time comparison</div>
+          <span class="chart-badge">Seconds</span>
+        </div>
+        <div style="position:relative;" id="agentChartWrap"><canvas id="agentChart" role="img" aria-label="Agent talk time horizontal bar chart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title">Connect rate</div>
+          <span class="chart-badge">%</span>
+        </div>
+        <div style="position:relative;height:220px"><canvas id="gaugeChart" role="img" aria-label="Connection rate gauge"></canvas></div>
+        <div style="text-align:center;margin-top:4px">
+          <span style="font-family:'Syne',sans-serif;font-size:32px;font-weight:800;color:var(--text)">${m.connRate}%</span>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;letter-spacing:.06em;text-transform:uppercase">Connected calls</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Agent Table -->
+    <div class="table-card">
+      <div class="chart-header">
+        <div class="chart-title">Agent performance breakdown</div>
+        <span class="chart-badge">${data.filter(r=>(r['Agent Name']||r.agent||'')!=='Inbound No Agent').length} calls</span>
+      </div>
+      <table>
+        <thead><tr>
+          <th>Agent</th>
+          <th>Calls</th>
+          <th>Talk time</th>
+          <th>Avg / call</th>
+          <th>Dead air</th>
+          <th>Types</th>
+        </tr></thead>
+        <tbody id="agentTbody"></tbody>
+      </table>
+    </div>
+  `;
+
+  renderKPIs(m);
+  renderTypeChart(data);
+  renderHourChart(data);
+  renderAgentChart(data);
+  renderGauge(m.connRate);
+  renderAgentTable(data);
+}
+
+/* ── KPIs ── */
+function renderKPIs(m) {
+  const cards = [
+    { icon:'📞', label:'Total Interactions', value: m.n, sub: currentFilter==='all'?'all types':currentFilter, color:'#3b82f6' },
+    { icon:'✅', label:'Connected Calls', value: m.connected, sub: m.connRate+'% connect rate', color:'#06d6a0', cls: m.connRate>50?'up':'down' },
+    { icon:'⏱', label:'Total Talk Time', value: m.totalTalk+'s', sub: Math.round(m.totalTalk/60)+'m total', color:'#f59e0b' },
+    { icon:'📊', label:'Avg Talk / Call', value: m.avgTalk+'s', sub: 'per connected call', color:'#a78bfa' },
+    { icon:'👥', label:'Active Agents', value: m.agents, sub: 'human agents', color:'#38bdf8' },
+    { icon:'⚡', label:'No-Agent Drops', value: m.noAgent, sub: 'unhandled inbound', color:'#f43f5e', cls:'down' },
+  ];
+  document.getElementById('kpiGrid').innerHTML = cards.map((c,i) => `
+    <div class="kpi-card" style="animation-delay:${0.05+i*0.05}s">
+      <div class="kpi-icon" style="background:${c.color}18;font-size:16px">${c.icon}</div>
+      <div class="kpi-label">${c.label}</div>
+      <div class="kpi-value">${c.value}</div>
+      <div class="kpi-sub ${c.cls||''}">${c.sub}</div>
+    </div>`).join('');
+}
+
+/* ── TYPE DOUGHNUT ── */
+function renderTypeChart(data) {
+  const counts = {};
+  data.forEach(r => {
+    const t = String(r['Interaction Type']||r.type||'Unknown').trim();
+    counts[t] = (counts[t]||0)+1;
+  });
+  const labels = Object.keys(counts);
+  const vals = labels.map(l=>counts[l]);
+  const palette = ['#3b82f6','#06d6a0','#f59e0b','#f43f5e','#a78bfa'];
+  const colors = labels.map((_,i)=>palette[i%palette.length]);
+
+  document.getElementById('typeLegend').innerHTML = labels.map((l,i)=>`
+    <div class="legend-item"><span class="legend-dot" style="background:${colors[i]}"></span>${l} (${vals[i]})</div>`).join('');
+
+  charts.type = new Chart(document.getElementById('typeChart'), {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: vals, backgroundColor: colors, borderWidth: 0, hoverOffset: 6 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '68%',
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed} calls` } } }
+    }
+  });
+}
+
+/* ── HOURLY BAR ── */
+function renderHourChart(data) {
+  const hourCounts = {};
+  data.forEach(r => {
+    const raw = String(r.Hour||r.hour||r['Start Ts']||'0:00');
+    const h = parseInt(raw.split(':')[0]);
+    if (!isNaN(h)) hourCounts[h] = (hourCounts[h]||0)+1;
+  });
+  const allHours = Object.keys(hourCounts).map(Number).sort((a,b)=>a-b);
+  if (!allHours.length) return;
+  const minH = allHours[0], maxH = allHours[allHours.length-1];
+  const labels=[], vals=[];
+  for (let h=minH;h<=maxH;h++) { labels.push(h+':00'); vals.push(hourCounts[h]||0); }
+
+  charts.hour = new Chart(document.getElementById('hourChart'), {
+    type: 'bar',
+    data: { labels, datasets: [{
+      label: 'Calls', data: vals,
+      backgroundColor: vals.map(v => v === Math.max(...vals) ? '#3b82f6' : 'rgba(59,130,246,0.25)'),
+      borderRadius: 5, borderSkipped: false
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#4a6080', font: { family: "'DM Mono'", size: 11 }, autoSkip: false, maxRotation: 0 }, border: { display: false } },
+        y: { grid: { color: 'rgba(56,139,255,0.06)' }, ticks: { color: '#4a6080', font: { family: "'DM Mono'", size: 11 }, stepSize: 1 }, border: { display: false } }
+      }
+    }
+  });
+}
+
+/* ── AGENT BAR ── */
+function renderAgentChart(data) {
+  const agentTalk = {};
+  data.filter(r=>(r['Agent Name']||r.agent||'')!=='Inbound No Agent').forEach(r=>{
+    const name = r['Agent Name']||r.agent||'Unknown';
+    agentTalk[name] = (agentTalk[name]||0) + (+r['Customer Talk Duration']||+r.talkDur||0);
+  });
+  const agents = Object.keys(agentTalk).sort((a,b)=>agentTalk[b]-agentTalk[a]);
+  if (!agents.length) return;
+  const vals = agents.map(a=>agentTalk[a]);
+  const h = Math.max(140, agents.length * 48 + 40);
+  document.getElementById('agentChartWrap').style.height = h+'px';
+
+  const palette = ['#3b82f6','#06d6a0','#f59e0b','#a78bfa','#f43f5e','#38bdf8'];
+  charts.agent = new Chart(document.getElementById('agentChart'), {
+    type: 'bar',
+    data: { labels: agents, datasets: [{
+      label: 'Talk time (s)', data: vals,
+      backgroundColor: agents.map((_,i)=>palette[i%palette.length]+'88'),
+      borderColor: agents.map((_,i)=>palette[i%palette.length]),
+      borderWidth: 1, borderRadius: 5, borderSkipped: false
+    }]},
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(56,139,255,0.06)' }, ticks: { color: '#4a6080', font: { family: "'DM Mono'", size: 11 } }, border: { display: false } },
+        y: { grid: { display: false }, ticks: { color: '#8ba3c7', font: { family: "'DM Mono'", size: 12 } }, border: { display: false } }
+      }
+    }
+  });
+}
+
+/* ── GAUGE (doughnut) ── */
+function renderGauge(rate) {
+  charts.gauge = new Chart(document.getElementById('gaugeChart'), {
+    type: 'doughnut',
+    data: { datasets: [{
+      data: [rate, 100-rate],
+      backgroundColor: ['#06d6a0', 'rgba(255,255,255,0.04)'],
+      borderWidth: 0
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '76%', rotation: -90, circumference: 180,
+      plugins: { legend: { display: false }, tooltip: { enabled: false } }
+    }
+  });
+}
+
+/* ── AGENT TABLE ── */
+function renderAgentTable(data) {
+  const agentMap = {};
+  data.filter(r=>(r['Agent Name']||r.agent||'')!=='Inbound No Agent').forEach(r=>{
+    const name = r['Agent Name']||r.agent||'Unknown';
+    const type = String(r['Interaction Type']||r.type||'').trim();
+    const talk = +r['Customer Talk Duration']||+r.talkDur||0;
+    const dead = +r.Dead||+r.dead||0;
+    if (!agentMap[name]) agentMap[name] = { calls:0, talk:0, dead:0, types:{} };
+    agentMap[name].calls++;
+    agentMap[name].talk += talk;
+    agentMap[name].dead += dead;
+    agentMap[name].types[type] = (agentMap[name].types[type]||0)+1;
+  });
+
+  const maxTalk = Math.max(...Object.values(agentMap).map(a=>a.talk), 1);
+  const tagClass = { Inbound:'tag-in', Outbound:'tag-out', Manual:'tag-man' };
+
+  document.getElementById('agentTbody').innerHTML = Object.entries(agentMap)
+    .sort((a,b)=>b[1].talk-a[1].talk)
+    .map(([name, s]) => {
+      const avg = s.calls ? Math.round(s.talk/s.calls) : 0;
+      const pct = Math.round(s.talk/maxTalk*100);
+      const typeTags = Object.entries(s.types).map(([t,c])=>`<span class="tag ${tagClass[t]||''}">${t} ${c}</span>`).join('');
+      return `<tr>
+        <td><div class="agent-name">${name}</div></td>
+        <td style="color:var(--text);font-weight:500">${s.calls}</td>
+        <td>
+          <div class="progress-bar">
+            <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+            <span class="bar-val">${s.talk}s</span>
+          </div>
+        </td>
+        <td>${avg}s</td>
+        <td style="color:${s.dead>50?'#f43f5e':'var(--text3)'}">${s.dead}s</td>
+        <td>${typeTags}</td>
+      </tr>`;
+    }).join('');
+}
+
+/* ── BOOT ── */
+loadData();
+
+// Auto-refresh every 2 minutes
+setInterval(loadData, 120000);
+</script>
+</body>
+</html>
